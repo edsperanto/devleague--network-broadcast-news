@@ -1,18 +1,32 @@
 const net = require('net');
-//const fs = require('fs');
 
-//let socketLog = fs.createWriteStream('socket.txt', { flags: 'a', defaultEncoding: 'utf8' });
+let socketList = [];
 
-//let msg = "";
+let server = net.createServer(function(socket) {
 
-let server = net.createServer((socket) => {
-	//console.log(socket);
+	socketList.push(socket);
+	socket.setEncoding('utf8');
+	
 	socket.on('data', (chunk) => {
-		//socket.destroy();
-		console.log('message from', socket.localAddress);
-		//socket.write(chunk);
+		broadcast(chunk);
 	});
+
+	process.stdin.on('data', (cmd) => {
+		socket.write(cmd);
+	});
+
+	socket.on('end', () => {
+		console.log(`server disconnected from client`);
+	});
+
 });
+
+function broadcast(msg) {
+	for(let i = 0; i < socketList.length; i++) {
+		socketList[i].write(msg);
+		console.log(msg);
+	}
+}
 
 server.listen(6969, '0.0.0.0', function() {
 	console.log('opened server on', this.address());
