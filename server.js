@@ -1,36 +1,45 @@
 const net = require('net');
+const TITLE = '4chan';
 const reg = {
 	alpha: /^[a-z]+$/i,
-	lowerAlpha: /^[a-z]+$/,
-	upperAlpha: /^[A-Z]+$/,
 	alphaNum: /^[a-z0-9]+$/i
 };
 const SYS = {
 	ENTER_CHAT: 'HAS ENTERED THE CHAT',
 	LEFT: 'HAS LEFT THE CHAT',
-	JOINED: 'HAS JOINED THE SHADOW WEB'
+	JOINED: 'HAS JOINED ' + TITLE.toUpperCase()
 };
 
 let socketList = [];
 
 let users = {
-	lol: 'ayylmao'
+	ADMIN: 'thereisnogod',
+	lol: 'fuck',
+	oh: 'shit'
 };
 
 let server = net.createServer(function(socket) {
 
-	let username = "";
-	let address = socket.address().address;
-	let port = socket.address().port;
 	let step = 1;
 	let attempts = 5;
+	let my = {
+		username: '',
+		address: socket.address().address,
+		port: socket.address().port
+	}
+	let settings = {
+		anon: false,
+		showPort: true,
+		showIp: true,
+		showSentReceipt: false
+	}
 
 	socket.setEncoding('utf8');
 
-	console.log(`CONNECTED: ${address}:${port}`);
-	socket.write(`CONNECTED TO: ${address}:${port}`);
+	console.log(`CONNECTED: ${my.address}:${my.port}`);
+	socket.write(`CONNECTED TO: ${my.address}:${my.port}`);
 
-	socket.write('\nWelcome to the shadow web! Do you have an account? [Y/n]');
+	socket.write(`\nWelcome to ${TITLE}! Do you have an account? [Y/n]`);
 	socket.on('data', (chunk) => {
 		chunk = cleanse(chunk);
 		switch(step) {
@@ -56,12 +65,12 @@ let server = net.createServer(function(socket) {
 				}
 				if(users[chunk] === undefined) {
 					users[chunk] = "";
-					username = chunk;
-					socket.write(`Username "${username}" has been successfully created\nPlease create a new password:`);
+					my.username = chunk;
+					socket.write(`Username "${my.username}" has been successfully created\nPlease create a new password:`);
 					step = 4;
 				}else{
 					socket.write('This username has already been taken\nWould you like to login with this username? [Y/n]');
-					username = chunk;
+					my.username = chunk;
 					step = 3;
 				}
 				break;
@@ -77,15 +86,15 @@ let server = net.createServer(function(socket) {
 				}
 				break;
 			case 4: // Please create a new password:
-				users[username] = chunk;
+				users[my.username] = chunk;
 				socket.write('Your password has been successfully created');
 				socket.write('Please re-enter your password to confirm:');
 				step = 5;
 				break;
 			case 5: // Please re-enter your password to confirm:
-				if(chunk === users[username]) {
+				if(chunk === users[my.username]) {
 					socket.write('SUCCESSFULLY CREATED ACCOUNT\nWelcome to the shadow web! Do you have an account? [Y/n]');
-					notification(SYS.JOINED, socket, address, port, username);
+					notification(SYS.JOINED, socket, my);
 					step = 1;
 				}else{
 					socket.write('PASSWORD CONFIRMATION FAILED\nPlease create a new password:');
@@ -93,8 +102,8 @@ let server = net.createServer(function(socket) {
 				}
 				break;
 			case 6: // Please enter your username
-				username = chunk;
-				if(users[chunk] !== undefined) {
+				my.username = chunk;
+				if(users[my.username] !== undefined) {
 					socket.write('Please enter your password');
 					step = 8;
 				}else{
@@ -104,7 +113,7 @@ let server = net.createServer(function(socket) {
 				break;
 			case 7: // Auto create username if attempt during login
 				if(chunk == 'Y' || chunk == 'y') {
-					users[username] = "";
+					users[my.username] = "";
 					socket.write(`Username "${username}" has been successfully created\nPlease create a new password:`);
 					step = 4;
 				}else if(chunk == 'N' || chunk == 'n'){
@@ -115,16 +124,16 @@ let server = net.createServer(function(socket) {
 				}
 				break;
 			case 8: // Please enter your password
-				if(chunk === users[username]) {
+				if(chunk === users[my.username]) {
 					socket.write('LOGIN SUCCESSFUL, WELCOME TO THE SHADOW WEB');
 					socketList.push(socket);
-					notification(SYS.ENTER_CHAT, socket, address, port, username);
+					notification(SYS.ENTER_CHAT, socket, my);
 					step = 99;
 				}else{
 					if(attempts == 0) {
 						socket.write("LOGIN UNSUCCESSFUL, YOU WILL NOW BE DISCONNECTED FROM THE SHADOW WEB");
-						console.log(`WARNING: LOGIN ATTEMPT FAILED FROM ${address}:${port}`);
-						socketListPop(socket, address, port);
+						console.log(`WARNING: LOGIN ATTEMPT FAILED FROM ${my.address}:${my.port}`);
+						socketListPop(socket, my);
 						break;
 					}
 					socket.write(`Incorrect password or username, you have [${attempts}] attempts remaining\nPlease enter your password`);
@@ -132,8 +141,8 @@ let server = net.createServer(function(socket) {
 				}
 				break;
 			case 99: // allow access to chat room
-				broadcast(chunk, socket, address, port, username);
-				console.log(`SERVER BCAST FROM ${address}:${port} : ${chunk}`);
+				broadcast(chunk, socket, my, settings);
+				console.log(`SERVER BCAST FROM ${my.address}:${my.port} : ${chunk}`);
 				break;
 			default: // stepping error
 				console.log('ERROR: STEP DOES NOT EXIST');
@@ -155,33 +164,34 @@ let server = net.createServer(function(socket) {
 	});
 
 	socket.on('end', () => {
-		socketListPop(socket, address, port);
+		socketListPop(socket, my);
 	});
 
 });
 
-function broadcast(msg, user, address, port, username) {
+function broadcast(msg, user, my, settings) {
 	for(let i = 0; i < socketList.length; i++) {
-		if(socketList[i] === user) {
+		if(settings.showSentReceipt) {
 			socketList[i].write("MESSAGE SENT");
-		}else{
-			socketList[i].write(`[${username}] (${address}:${port}) : "${msg}"`);
+		}
+		if(socketList[i] !== user) {
+			socketList[i].write(`[${my.username}] (${my.address}:${my.port}) : "${msg}"`);
 		}
 	}
 }
-function notification(msg, user, address, port, username) {
+function notification(msg, user, my) {
 	for(let i = 0; i < socketList.length; i++) {
 		if(socketList[i] !== user) {
-			socketList[i].write(`[${username}] (${address}:${port}) ${msg}`);
+			socketList[i].write(`[${my.username}] (${my.address}:${my.port}) ${msg}`);
 		}
 	}
-	console.log(`[${username}] (${address}:${port}) ${msg}`);
+	console.log(`[${my.username}] (${my.address}:${my.port}) ${msg}`);
 }
 
-function socketListPop(user, address, port) {
+function socketListPop(user, my) {
 	let i = socketList.indexOf(user);
 	socketList.splice(i, 1);
-	console.log(`CLOSED: ${address}:${port}`);
+	console.log(`CLOSED: ${my.address}:${my.port}`);
 	user.end();
 	user.destroy();
 }
@@ -190,6 +200,10 @@ function cleanse(chunk) {
 	chunk = String(chunk);
 	chunk = chunk.substr(0, chunk.length - 1);
 	return chunk.trim();
+}
+
+function rndStr() {
+
 }
 
 server.listen(6969, '0.0.0.0', function() {
