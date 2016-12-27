@@ -2,7 +2,8 @@ const net = require('net');
 const reg = {
 	alpha: /^[a-z]+$/i,
 	lowerAlpha: /^[a-z]+$/,
-	upperAlpha: /^[A-Z]+$/
+	upperAlpha: /^[A-Z]+$/,
+	alphaNum: /^[a-z0-9]+$/i
 };
 
 let socketList = [];
@@ -13,6 +14,7 @@ let users = {
 
 let server = net.createServer(function(socket) {
 
+	let username = "";
 	let address = socket.address().address;
 	let port = socket.address().port;
 	let step = 1;
@@ -45,10 +47,16 @@ let server = net.createServer(function(socket) {
 					socket.write('The first character must be a letter');
 					break;
 				}
+				if(!reg.alphaNum.test(chunk)) {
+					socket.write('Username must only contain letters and numbers');
+					break;
+				}
 				if(users[chunk] === undefined) {
 					users[chunk] = "";
-					socket.write(`Username "${chunk}" has been successfully created`);
-					step = 99;
+					username = chunk;
+					socket.write(`Username "${username}" has been successfully created`);
+					socket.write('Please create a new password');
+					step = 4;
 				}else{
 					socket.write('This username has already been taken');
 					socket.write('Would you like to login with this username? [Y/n]');
@@ -64,6 +72,21 @@ let server = net.createServer(function(socket) {
 					step = 2;
 				}else{
 					socket.write('Please enter "y" or "n"');
+				}
+				break;
+			case 4:
+				users[username] = chunk;
+				socket.write('You password has been successfully created');
+				socket.write('Please re-enter your password to confirm');
+				step = 5;
+				break;
+			case 5:
+				if(chunk === users[username]) {
+					socket.write('SUCCESSFULLY CREATED ACCOUNT');
+				}else{
+					socket.write('PASSWORD CONFIRMATION FAILED');
+					socket.write('Please create a new password');
+					step = 4;
 				}
 				break;
 			case 99: // allow access to chat room
