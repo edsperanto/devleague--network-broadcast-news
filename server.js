@@ -29,10 +29,10 @@ let server = net.createServer(function(socket) {
 	socket.on('data', (chunk) => {
 		chunk = cleanse(chunk);
 		switch(step) {
-			case 1: // ask if account exists
+			case 1: // Do you have an account?
 				if(chunk == 'Y' || chunk == 'y') {
-					socket.write('LOGIN SUCCESSFUL!');
-					step = 99;
+					socket.write('Please enter your username');
+					step = 6;
 				}else if(chunk == 'N' || chunk == 'n'){
 					socket.write('Please create an account, what username would you like?');
 					step = 2;
@@ -42,7 +42,7 @@ let server = net.createServer(function(socket) {
 					// socketListPop(socket, address, port);
 				}
 				break;
-			case 2: // create username
+			case 2: // What username would you like?
 				if(!reg.alpha.test(chunk.charAt(0))) {
 					socket.write('The first character must be a letter');
 					break;
@@ -54,16 +54,14 @@ let server = net.createServer(function(socket) {
 				if(users[chunk] === undefined) {
 					users[chunk] = "";
 					username = chunk;
-					socket.write(`Username "${username}" has been successfully created`);
-					socket.write('Please create a new password');
+					socket.write(`Username "${username}" has been successfully created\nPlease create a new password:`);
 					step = 4;
 				}else{
-					socket.write('This username has already been taken');
-					socket.write('Would you like to login with this username? [Y/n]');
+					socket.write('This username has already been taken\nWould you like to login with this username? [Y/n]');
 					step = 3;
 				}
 				break;
-			case 3: 
+			case 3:  // Would you like to login with this username?
 				if(chunk == 'Y' || chunk == 'y') {
 					socket.write('LOGIN SUCCESSFUL WITH EXISTING USERNAME!');
 					step = 99;
@@ -74,19 +72,41 @@ let server = net.createServer(function(socket) {
 					socket.write('Please enter "y" or "n"');
 				}
 				break;
-			case 4:
+			case 4: // Please create a new password:
 				users[username] = chunk;
-				socket.write('You password has been successfully created');
-				socket.write('Please re-enter your password to confirm');
+				socket.write('Your password has been successfully created');
+				socket.write('Please re-enter your password to confirm:');
 				step = 5;
 				break;
-			case 5:
+			case 5: // Please re-enter your password to confirm:
 				if(chunk === users[username]) {
-					socket.write('SUCCESSFULLY CREATED ACCOUNT');
+					socket.write('SUCCESSFULLY CREATED ACCOUNT\nWelcome to the shadow web! Do you have an account? [Y/n]');
+					step = 1;
 				}else{
-					socket.write('PASSWORD CONFIRMATION FAILED');
-					socket.write('Please create a new password');
+					socket.write('PASSWORD CONFIRMATION FAILED\nPlease create a new password:');
 					step = 4;
+				}
+				break;
+			case 6: // Please enter your username
+				if(users[chunk] !== undefined) {
+					socket.write('USERNAME EXISTS!!!');
+					step = 99;
+				}else{
+					socket.write(`Username "${chunk}" does not exist\nWould you like to create it? [Y/n]`);
+					username = chunk;
+					step = 7;
+				}
+				break;
+			case 7: // Auto create username if attempt during login
+				if(chunk == 'Y' || chunk == 'y') {
+					users[username] = "";
+					socket.write(`Username "${username}" has been successfully created\nPlease create a new password:`);
+					step = 4;
+				}else if(chunk == 'N' || chunk == 'n'){
+					socket.write('Please enter your username');
+					step = 6;
+				}else{
+					socket.write('Please enter "y" or "n"');
 				}
 				break;
 			case 99: // allow access to chat room
