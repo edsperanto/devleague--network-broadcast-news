@@ -1,8 +1,15 @@
 const net = require('net');
+const reg = {
+	alpha: /^[a-z]+$/i,
+	lowerAlpha: /^[a-z]+$/,
+	upperAlpha: /^[A-Z]+$/
+};
 
 let socketList = [];
 
-let users = {};
+let users = {
+	lol: 'ayylmao'
+};
 
 let server = net.createServer(function(socket) {
 
@@ -28,11 +35,36 @@ let server = net.createServer(function(socket) {
 					socket.write('Please create an account, what username would you like?');
 					step = 2;
 				}else{
-					socket.write("LOGIN UNSUCCESSFUL, YOU WILL NOW BE DISCONNECTED FROM THE SHADOW WEB");
-					socketListPop(socket, address, port);
+					socket.write('Please enter "y" or "n"');
+					// socket.write("LOGIN UNSUCCESSFUL, YOU WILL NOW BE DISCONNECTED FROM THE SHADOW WEB");
+					// socketListPop(socket, address, port);
 				}
 				break;
-			case 2:
+			case 2: // create username
+				if(!reg.alpha.test(chunk.charAt(0))) {
+					socket.write('The first character must be a letter');
+					break;
+				}
+				if(users[chunk] === undefined) {
+					users[chunk] = "";
+					socket.write(`Username "${chunk}" has been successfully created`);
+					step = 99;
+				}else{
+					socket.write('This username has already been taken');
+					socket.write('Would you like to login with this username? [Y/n]');
+					step = 3;
+				}
+				break;
+			case 3: 
+				if(chunk == 'Y' || chunk == 'y') {
+					socket.write('LOGIN SUCCESSFUL WITH EXISTING USERNAME!');
+					step = 99;
+				}else if(chunk == 'N' || chunk == 'n'){
+					socket.write('Please create an account, what username would you like?');
+					step = 2;
+				}else{
+					socket.write('Please enter "y" or "n"');
+				}
 				break;
 			case 99: // allow access to chat room
 				broadcast(chunk, socket, address, port);
@@ -45,17 +77,13 @@ let server = net.createServer(function(socket) {
 	});
 
 	process.stdin.on('data', (msg) => {
-
 		let socketActive = false;
-
 		msg = '[ADMIN] ' + cleanse(msg);
-
 		for(let i = 0; i < socketList.length; i++) {
 			if(socketList[i] === socket) {
 				socketActive = true;
 			}
 		}
-
 		if(socketActive) {
 			socket.write(msg);
 		}
