@@ -13,9 +13,26 @@ const SYS = {
 let socketList = [];
 
 let users = {
-	ADMIN: 'thereisnogod',
-	lol: 'fuck',
-	oh: 'shit'
+	ADMIN: {
+		loggedin: true,
+		passwd: 'thereisnogod',
+		settings: {
+			anon: false,
+			showPort: true,
+			showIp: true,
+			showSentReceipt: false
+		}
+	},
+	lol: {
+		loggedin: false,
+		passwd: 'ayylmao',
+		settings: {
+			anon: false,
+			showPort: true,
+			showIp: true,
+			showSentReceipt: false
+		}
+	}
 };
 
 let server = net.createServer(function(socket) {
@@ -23,6 +40,7 @@ let server = net.createServer(function(socket) {
 	let step = 1;
 	let attempts = 5;
 	let my = {
+		uniqueID: rndstr(),
 		username: '',
 		address: socket.address().address,
 		port: socket.address().port
@@ -64,7 +82,7 @@ let server = net.createServer(function(socket) {
 					break;
 				}
 				if(users[chunk] === undefined) {
-					users[chunk] = "";
+					users[chunk] = {};
 					my.username = chunk;
 					socket.write(`Username "${my.username}" has been successfully created\nPlease create a new password:`);
 					step = 4;
@@ -86,13 +104,12 @@ let server = net.createServer(function(socket) {
 				}
 				break;
 			case 4: // Please create a new password:
-				users[my.username] = chunk;
-				socket.write('Your password has been successfully created');
-				socket.write('Please re-enter your password to confirm:');
+				users[my.username]['passwd'] = chunk;
+				socket.write('Your password has been successfully created\nPlease re-enter your password to confirm:');
 				step = 5;
 				break;
 			case 5: // Please re-enter your password to confirm:
-				if(chunk === users[my.username]) {
+				if(chunk === users[my.username].passwd) {
 					socket.write('SUCCESSFULLY CREATED ACCOUNT\nWelcome to the shadow web! Do you have an account? [Y/n]');
 					notification(SYS.JOINED, socket, my);
 					step = 1;
@@ -113,8 +130,8 @@ let server = net.createServer(function(socket) {
 				break;
 			case 7: // Auto create username if attempt during login
 				if(chunk == 'Y' || chunk == 'y') {
-					users[my.username] = "";
-					socket.write(`Username "${username}" has been successfully created\nPlease create a new password:`);
+					users[my.username] = {};
+					socket.write(`Username "${my.username}" has been successfully created\nPlease create a new password:`);
 					step = 4;
 				}else if(chunk == 'N' || chunk == 'n'){
 					socket.write('Please enter your username');
@@ -124,7 +141,7 @@ let server = net.createServer(function(socket) {
 				}
 				break;
 			case 8: // Please enter your password
-				if(chunk === users[my.username]) {
+				if(chunk === users[my.username].passwd) {
 					socket.write('LOGIN SUCCESSFUL, WELCOME TO THE SHADOW WEB');
 					socketList.push(socket);
 					notification(SYS.ENTER_CHAT, socket, my);
@@ -202,8 +219,8 @@ function cleanse(chunk) {
 	return chunk.trim();
 }
 
-function rndStr() {
-
+function rndstr() {
+	return Math.random().toString(36).substr(2, 6);
 }
 
 server.listen(6969, '0.0.0.0', function() {
