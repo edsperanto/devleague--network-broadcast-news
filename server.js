@@ -5,6 +5,11 @@ const reg = {
 	upperAlpha: /^[A-Z]+$/,
 	alphaNum: /^[a-z0-9]+$/i
 };
+const SYS = {
+	ENTER_CHAT: 'HAS ENTERED THE CHAT',
+	LEFT: 'HAS LEFT THE CHAT',
+	JOINED: 'HAS JOINED THE SHADOW WEB'
+};
 
 let socketList = [];
 
@@ -20,7 +25,6 @@ let server = net.createServer(function(socket) {
 	let step = 1;
 	let attempts = 5;
 
-	socketList.push(socket);
 	socket.setEncoding('utf8');
 
 	console.log(`CONNECTED: ${address}:${port}`);
@@ -81,6 +85,7 @@ let server = net.createServer(function(socket) {
 			case 5: // Please re-enter your password to confirm:
 				if(chunk === users[username]) {
 					socket.write('SUCCESSFULLY CREATED ACCOUNT\nWelcome to the shadow web! Do you have an account? [Y/n]');
+					notification(SYS.JOINED, socket, address, port, username);
 					step = 1;
 				}else{
 					socket.write('PASSWORD CONFIRMATION FAILED\nPlease create a new password:');
@@ -112,10 +117,13 @@ let server = net.createServer(function(socket) {
 			case 8: // Please enter your password
 				if(chunk === users[username]) {
 					socket.write('LOGIN SUCCESSFUL, WELCOME TO THE SHADOW WEB');
+					socketList.push(socket);
+					notification(SYS.ENTER_CHAT, socket, address, port, username);
 					step = 99;
 				}else{
 					if(attempts == 0) {
 						socket.write("LOGIN UNSUCCESSFUL, YOU WILL NOW BE DISCONNECTED FROM THE SHADOW WEB");
+						console.log(`WARNING: LOGIN ATTEMPT FAILED FROM ${address}:${port}`);
 						socketListPop(socket, address, port);
 						break;
 					}
@@ -124,7 +132,7 @@ let server = net.createServer(function(socket) {
 				}
 				break;
 			case 99: // allow access to chat room
-				broadcast(chunk, socket, address, port);
+				broadcast(chunk, socket, address, port, username);
 				console.log(`SERVER BCAST FROM ${address}:${port} : ${chunk}`);
 				break;
 			default: // stepping error
@@ -152,14 +160,22 @@ let server = net.createServer(function(socket) {
 
 });
 
-function broadcast(msg, user, address, port) {
+function broadcast(msg, user, address, port, username) {
 	for(let i = 0; i < socketList.length; i++) {
 		if(socketList[i] === user) {
 			socketList[i].write("MESSAGE SENT");
 		}else{
-			socketList[i].write(`${address}:${port}: "${msg}"`);
+			socketList[i].write(`[${username}] (${address}:${port}) : "${msg}"`);
 		}
 	}
+}
+function notification(msg, user, address, port, username) {
+	for(let i = 0; i < socketList.length; i++) {
+		if(socketList[i] !== user) {
+			socketList[i].write(`[${username}] (${address}:${port}) ${msg}`);
+		}
+	}
+	console.log(`[${username}] (${address}:${port}) ${msg}`);
 }
 
 function socketListPop(user, address, port) {
