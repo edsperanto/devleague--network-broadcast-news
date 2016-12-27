@@ -2,6 +2,8 @@ const net = require('net');
 
 let socketList = [];
 
+let users = {};
+
 let server = net.createServer(function(socket) {
 
 	let address = socket.address().address;
@@ -14,37 +16,53 @@ let server = net.createServer(function(socket) {
 	console.log(`CONNECTED: ${address}:${port}`);
 	socket.write(`CONNECTED TO: ${address}:${port}`);
 
-	socket.write('Welcome to the shadow web! Do you have an account? [Y/n]');
+	socket.write('\nWelcome to the shadow web! Do you have an account? [Y/n]');
 	socket.on('data', (chunk) => {
 		chunk = cleanse(chunk);
 		switch(step) {
-			case 1:
-				if(chunk !== 'n') {
+			case 1: // ask if account exists
+				if(chunk == 'Y' || chunk == 'y') {
 					socket.write('LOGIN SUCCESSFUL!');
 					step = 99;
+				}else if(chunk == 'N' || chunk == 'n'){
+					socket.write('Please create an account, what username would you like?');
+					step = 2;
+				}else{
+					socket.write("LOGIN UNSUCCESSFUL, YOU WILL NOW BE DISCONNECTED FROM THE SHADOW WEB");
+					socketListPop(socket, address, port);
 				}
 				break;
-			case 99:
+			case 2:
+				break;
+			case 99: // allow access to chat room
 				broadcast(chunk, socket, address, port);
 				console.log(`SERVER BCAST FROM ${address}:${port} : ${chunk}`);
 				break;
-			default:
+			default: // stepping error
 				console.log('ERROR: STEP DOES NOT EXIST');
 				break;
 		}
 	});
 
-	process.stdin.on('data', (cmd) => {
-		socket.write(cmd);
+	process.stdin.on('data', (msg) => {
+
+		let socketActive = false;
+
+		msg = '[ADMIN] ' + cleanse(msg);
+
+		for(let i = 0; i < socketList.length; i++) {
+			if(socketList[i] === socket) {
+				socketActive = true;
+			}
+		}
+
+		if(socketActive) {
+			socket.write(msg);
+		}
 	});
 
-	// socket.write("LOGIN UNSUCCESSFUL, YOU WILL NOW BE DISCONNECTED FROM THE SHADOW WEB");
-	// socketListPop(socket);
-	// socket.destroy();
-
 	socket.on('end', () => {
-		console.log(`CLOSED: ${address}:${port}`);
-		socketListPop(socket);
+		socketListPop(socket, address, port);
 	});
 
 });
@@ -59,12 +77,16 @@ function broadcast(msg, user, address, port) {
 	}
 }
 
-function socketListPop(user) {
+function socketListPop(user, address, port) {
 	let i = socketList.indexOf(user);
 	socketList.splice(i, 1);
+	console.log(`CLOSED: ${address}:${port}`);
+	user.end();
+	user.destroy();
 }
 
 function cleanse(chunk) {
+	chunk = String(chunk);
 	chunk = chunk.substr(0, chunk.length - 1);
 	return chunk.trim();
 }
