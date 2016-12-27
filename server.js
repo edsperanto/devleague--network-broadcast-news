@@ -18,6 +18,7 @@ let server = net.createServer(function(socket) {
 	let address = socket.address().address;
 	let port = socket.address().port;
 	let step = 1;
+	let attempts = 5;
 
 	socketList.push(socket);
 	socket.setEncoding('utf8');
@@ -38,8 +39,6 @@ let server = net.createServer(function(socket) {
 					step = 2;
 				}else{
 					socket.write('Please enter "y" or "n"');
-					// socket.write("LOGIN UNSUCCESSFUL, YOU WILL NOW BE DISCONNECTED FROM THE SHADOW WEB");
-					// socketListPop(socket, address, port);
 				}
 				break;
 			case 2: // What username would you like?
@@ -58,13 +57,14 @@ let server = net.createServer(function(socket) {
 					step = 4;
 				}else{
 					socket.write('This username has already been taken\nWould you like to login with this username? [Y/n]');
+					username = chunk;
 					step = 3;
 				}
 				break;
 			case 3:  // Would you like to login with this username?
 				if(chunk == 'Y' || chunk == 'y') {
-					socket.write('LOGIN SUCCESSFUL WITH EXISTING USERNAME!');
-					step = 99;
+					socket.write('Please enter your password');
+					step = 8;
 				}else if(chunk == 'N' || chunk == 'n'){
 					socket.write('Please create an account, what username would you like?');
 					step = 2;
@@ -88,12 +88,12 @@ let server = net.createServer(function(socket) {
 				}
 				break;
 			case 6: // Please enter your username
+				username = chunk;
 				if(users[chunk] !== undefined) {
-					socket.write('USERNAME EXISTS!!!');
-					step = 99;
+					socket.write('Please enter your password');
+					step = 8;
 				}else{
 					socket.write(`Username "${chunk}" does not exist\nWould you like to create it? [Y/n]`);
-					username = chunk;
 					step = 7;
 				}
 				break;
@@ -107,6 +107,20 @@ let server = net.createServer(function(socket) {
 					step = 6;
 				}else{
 					socket.write('Please enter "y" or "n"');
+				}
+				break;
+			case 8: // Please enter your password
+				if(chunk === users[username]) {
+					socket.write('LOGIN SUCCESSFUL, WELCOME TO THE SHADOW WEB');
+					step = 99;
+				}else{
+					if(attempts == 0) {
+						socket.write("LOGIN UNSUCCESSFUL, YOU WILL NOW BE DISCONNECTED FROM THE SHADOW WEB");
+						socketListPop(socket, address, port);
+						break;
+					}
+					socket.write(`Incorrect password or username, you have [${attempts}] attempts remaining\nPlease enter your password`);
+					attempts--;
 				}
 				break;
 			case 99: // allow access to chat room
