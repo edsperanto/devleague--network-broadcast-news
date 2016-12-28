@@ -2,7 +2,8 @@ const net = require('net');
 const TITLE = '4chan';
 const reg = {
 	alpha: /^[a-z]+$/i,
-	alphaNum: /^[a-z0-9]+$/i
+	alphaNum: /^[a-z0-9]+$/i,
+	limited: /^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]*$/
 };
 const SYS = {
 	ENTER_CHAT: 'HAS ENTERED THE CHAT',
@@ -187,13 +188,23 @@ let server = net.createServer(function(socket) {
 });
 
 function broadcast(msg, user, my, settings) {
-	for(let i = 0; i < socketList.length; i++) {
-		if(settings.showSentReceipt) {
-			socketList[i].write("MESSAGE SENT");
+	if(reg.limited.test(msg)) {
+		for(let i = 0; i < socketList.length; i++) {
+			if(settings.showSentReceipt) {
+				user.write('MESSAGE SENT');
+			}
+			if(socketList[i] !== user) {
+				socketList[i].write(`[${my.username}] (${my.address}:${my.port}) : "${msg}"`);
+			}
 		}
-		if(socketList[i] !== user) {
-			socketList[i].write(`[${my.username}] (${my.address}:${my.port}) : "${msg}"`);
+	}else{
+		let illegal = "";
+		for(let i = 0; i < msg.length; i++) {
+			if(!reg.limited.test(msg)) {
+				illegal += msg[i];
+			}
 		}
+		user.write('Illegal characters detected: ' + illegal);
 	}
 }
 function notification(msg, user, my) {
