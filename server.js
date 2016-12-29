@@ -3,7 +3,7 @@ const TITLE = '4chan';
 const reg = {
 	alpha: /^[a-z]+$/i,
 	alphaNum: /^[a-z0-9]+$/i,
-	limited: /^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]*$/
+	limited: /^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/\ ?]*$/
 };
 const SYS = {
 	ENTER_CHAT: 'HAS ENTERED THE CHAT',
